@@ -50,28 +50,65 @@ void solve_challenge(void)
         }
         else if (state_ == STATE_AT_CROSS)
         {
-            // First: Get direction right
-            // Second: A: For row goal, get to the correct row
-            //         B: For col goal, get to the correct col
-            // Third: Continue
-            if (current_direction_ != goal_direction_ )
+            int8_t delta_col_ = goal_col_ - current_col_;
+            int8_t delta_row_ = goal_row_ - current_row_;
+            // Can we minimize something by moving forward?
+            if ((current_direction_ == DIRECTION_NORTH && delta_row_ > 0)
+                || (current_direction_ == DIRECTION_SOUTH && delta_row_ < 0)
+                || (current_direction_ == DIRECTION_WEST && delta_col_ > 0)
+                || (current_direction_ == DIRECTION_EAST && delta_col_ < 0))
             {
-                 rotate_to_goal();
-                 state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
-            }
-            else if(!check_row_col())
-            {
-                approach_goal_col_row();
                 state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
             }
-            else if (current_row_ == goal_row_ && current_col_ == goal_col_)
+            // North
+            else if(current_direction_ == DIRECTION_NORTH && delta_col_ > 0)
             {
-                venkat(VENKAT_NO_ERR); // Done
+                rotate_ccw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+            }
+            else if(current_direction_ == DIRECTION_NORTH && delta_col_ < 0)
+            {
+                rotate_cw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+            }
+            // South
+            else if(current_direction_ == DIRECTION_SOUTH && delta_col_ > 0)
+            {
+                rotate_cw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+            }
+            else if(current_direction_ == DIRECTION_SOUTH && delta_col_ < 0)
+            {
+                rotate_ccw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+            }
+            //East
+            else if(current_direction_ == DIRECTION_EAST && delta_row_ > 0)
+            {
+                rotate_ccw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+            }
+            else if(current_direction_ == DIRECTION_EAST && delta_row_ < 0)
+            {
+                rotate_cw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+            }
+            //West
+            else if(current_direction_ == DIRECTION_WEST && delta_row_ > 0)
+            {
+                rotate_cw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+            }
+            else if(current_direction_ == DIRECTION_WEST && delta_row_ < 0)
+            {
+                rotate_ccw();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
             }
             else
             {
-                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+                venkat(VENKAT_NO_ERR);
             }
+
         }
     } 
 }
@@ -146,7 +183,7 @@ uint8_t check_end(uint8_t row, uint8_t col)
 uint8_t get_first_goal()
 {
     // return COL_COUNT + 1;
-    return 8;
+    return 13;
 }
 
 void set_goal_data(uint8_t center)
@@ -181,7 +218,6 @@ void set_goal_data(uint8_t center)
     {
         venkat(VENKAT_INVALID_CENTER);
     }
-    
 }
 
 

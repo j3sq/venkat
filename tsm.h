@@ -45,6 +45,7 @@ void rotate_ccw(void);
 uint8_t check_row_col(void); // Is the robot in the correct row (for row centers),
                           // or correct col (for col centers)
 void approach_goal_col_row(void);
+void approach_goal_col_row2(void);
 void sanity_check(void);
 void rotate_to_goal(void);
 void print_goal();
