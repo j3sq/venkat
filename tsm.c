@@ -106,9 +106,30 @@ void solve_challenge(void)
             }
             else
             {
-                venkat(VENKAT_NO_ERR);
+                state_ = STATE_APPROACHING_CENTER;
             }
 
+        }
+        else if (state_ == STATE_APPROACHING_CENTER)
+        {
+            if (goal_direction_ == current_direction_)
+            {
+                move_forward();
+                venkat(VENKAT_NO_ERR);
+            }
+            int8_t delta_direction = (int8_t) goal_direction_ - (int8_t) current_direction_;
+            if (delta_direction == 1 || delta_direction == -3)
+            {
+                rotate_cw();
+            }
+            else if( delta_direction == -1 || delta_direction == 3)
+            {
+                rotate_ccw();
+            }
+            else
+            {
+                venkat(VENKAT_INVALID_DELTA);
+            }
         }
     } 
 }
@@ -183,7 +204,7 @@ uint8_t check_end(uint8_t row, uint8_t col)
 uint8_t get_first_goal()
 {
     // return COL_COUNT + 1;
-    return 13;
+    return 12;
 }
 
 void set_goal_data(uint8_t center)
@@ -435,5 +456,17 @@ void print_goal(void)
     print_long(goal_row_);
     print(":");
     print_long(goal_col_);
+
+}
+
+void move_forward()
+{
+    uint16_t sensors[5];
+    int ll = read_line(sensors, IR_EMITTERS_ON);
+    for (int8_t ii = 0; ii < 25; ii++)
+    {
+        follow_line(ll);
+        ll = read_line(sensors, IR_EMITTERS_ON);
+    }
 
 }

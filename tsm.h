@@ -49,6 +49,7 @@ void approach_goal_col_row2(void);
 void sanity_check(void);
 void rotate_to_goal(void);
 void print_goal();
+void move_forward(); // Helper function to move the robot a couple of cm's forward
 
 
 
