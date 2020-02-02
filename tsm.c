@@ -56,12 +56,13 @@ void solve_challenge(void)
             // Third: Continue
             if (current_direction_ != goal_direction_ )
             {
-                rotate_cw(); // ToDo: This can take 1, 2, or 3 turns to get into the right direction
-                             // Optimize by rotating CW or CCW based on current direction and goal
+                 rotate_to_goal();
+                 state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
             }
             else if(!check_row_col())
             {
                 approach_goal_col_row();
+                state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
             }
             else if (current_row_ == goal_row_ && current_col_ == goal_col_)
             {
@@ -145,7 +146,7 @@ uint8_t check_end(uint8_t row, uint8_t col)
 uint8_t get_first_goal()
 {
     // return COL_COUNT + 1;
-    return 6;
+    return 8;
 }
 
 void set_goal_data(uint8_t center)
@@ -190,10 +191,12 @@ void rotate_cw()
 	uint16_t l;
     uint8_t done = 0;
 
-    clear();
-    lcd_goto_xy(0,0);
-    print("Vnkt");
-    print("cw");
+    // clear();
+    // lcd_goto_xy(0,0);
+    // print("Vnkt");
+    // lcd_goto_xy(0,1);
+    // print("cw");
+    uint8_t first_time = TRUE;
     while(!done)
     {
         (void) read_line(sensors, IR_EMITTERS_ON);
@@ -201,11 +204,16 @@ void rotate_cw()
 			 (uint32_t)sensors[3] * 3000UL +
 			 (uint32_t)sensors[4] * 4000UL) / (sensors[2] + sensors[3] + sensors[4]);
         follow_line(l);
-        delay_ms(100);
+        if (first_time)
+        {
+            delay_ms(100);
+            first_time = FALSE;
+        }
+
+        (void) read_line(sensors, IR_EMITTERS_ON);
         if (sensors[LEFT_OUTHER_SENSOR] < 100 && sensors[RIGHT_OUTHER_SENSOR] < 100)
         {
             done = TRUE;
-            play_sound(1);
             if (current_direction_ == DIRECTION_WEST)
             {
                 current_direction_ = DIRECTION_NORTH;
@@ -226,31 +234,39 @@ void rotate_ccw()
 	uint16_t l;
     uint8_t done = 0;
 
-    clear();
-    lcd_goto_xy(0,0);
-    print("Vnkt");
-    print("ccw");
-
+    // clear();
+    // lcd_goto_xy(0,0);
+    // print("Vnkt");
+    // lcd_goto_xy(0,1);
+    // print("ccw");
+    uint8_t first_time = TRUE;
     while(!done)
     {
         (void) read_line(sensors, IR_EMITTERS_ON);
-        l = ((uint32_t)sensors[0] * 2000UL +
-			 (uint32_t)sensors[1] * 3000UL +
-			 (uint32_t)sensors[2] * 4000UL) / (sensors[0] + sensors[1] + sensors[2]);
+        l = ((uint32_t)sensors[0] * 0000UL +
+			 (uint32_t)sensors[1] * 1000UL +
+			 (uint32_t)sensors[2] * 2000UL) / (sensors[0] + sensors[1] + sensors[2]);
         follow_line(l);
+        if (first_time)
+        {
+            delay_ms(100);
+            first_time = FALSE;
+        }
+        (void) read_line(sensors, IR_EMITTERS_ON);
         if (sensors[LEFT_OUTHER_SENSOR] < 100 && sensors[RIGHT_OUTHER_SENSOR] < 100)
         {
             done = TRUE;
-            if (current_direction_ == DIRECTION_WEST)
+            if (current_direction_ == DIRECTION_NORTH)
             {
-                current_direction_ = DIRECTION_NORTH;
+                current_direction_ = DIRECTION_WEST;
             }
             else
             {
-                current_direction_++;
+                current_direction_--;
             }
         }
     }
+    return;
 }
 
 void venkat(Venkat_type err)
@@ -324,7 +340,7 @@ void approach_goal_col_row(void)
     else if(goal_direction_ == DIRECTION_NORTH || goal_direction_ == DIRECTION_SOUTH)
     {
         // Col goal
-        uint8_t delta = (goal_col_ - current_col_);
+        int8_t delta = goal_col_ - current_col_;
         if (delta > 0)
         {
             rotate_ccw();// Go right
@@ -353,5 +369,25 @@ void sanity_check(void)
     if (current_col_ < -1 || current_col_ > COL_COUNT || current_row_ < -1 || current_row_ > ROW_COUNT)
     {
         venkat(VENKAT_OUTSIDE_ARENA);
+    }
+}
+
+void rotate_to_goal(void)
+{
+    int8_t delta = (int8_t) goal_direction_ - (int8_t) current_direction_;
+    if (delta == 3) delta = -1;
+    if (delta == -3) delta = 1;
+
+    if (delta == 1)
+    {
+        rotate_cw();
+    }
+    else if (delta == -1)
+    {
+        rotate_ccw();
+    }
+    else
+    {
+        venkat(VENKAT_INVALID_DELTA+ 10 + current_direction_);
     }
 }
