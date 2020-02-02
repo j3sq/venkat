@@ -391,3 +391,13 @@ void rotate_to_goal(void)
         venkat(VENKAT_INVALID_DELTA+ 10 + current_direction_);
     }
 }
+
+void print_goal(void)
+{
+    lcd_goto_xy(0,0);
+    clear();
+    print_long(goal_row_);
+    print(":");
+    print_long(goal_col_);
+
+}
