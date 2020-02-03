@@ -35,6 +35,40 @@ int8_t current_goal_ = 0;
 int8_t goal_row_ = 0;
 int8_t goal_col_ = 0;
 
+uint8_t deadend = 0;
+uint8_t state_right = 0;
+uint8_t state_left = 0;
+uint8_t currentNoOfDots = 0;
+uint8_t targetNodeIndex = 0;
+uint8_t crossing_marker = 0;
+uint8_t state = 0;
+
+void StopRobot(void)
+{
+	set_motors(0, 0);
+}
+
+void StopRobotForever(void)
+{
+	StopRobot();
+	while(1);
+}
+
+void run_1cm(void)
+{
+    set_m1_speed(30);
+    set_m2_speed(30);
+    delay_ms(100);
+}
+
+void turn180()
+{
+	print_message_and_number("turn180", 0);
+	
+	set_m1_speed(-50);
+	set_m2_speed(50);
+	delay_ms(725);
+}
 
 void solve_challenge(void)
 {
@@ -112,23 +146,118 @@ void solve_challenge(void)
         }
         else if (state_ == STATE_APPROACHING_CENTER)
         {
-            if (goal_direction_ == current_direction_)
+            int8_t delta_direction = (int8_t) goal_direction_ - (int8_t) current_direction_;
+            if (delta_direction == 0)
             {
                 move_forward();
-                venkat(VENKAT_NO_ERR);
-            }
-            int8_t delta_direction = (int8_t) goal_direction_ - (int8_t) current_direction_;
-            if (delta_direction == 1 || delta_direction == -3)
-            {
-                rotate_cw();
-            }
-            else if( delta_direction == -1 || delta_direction == 3)
-            {
-                rotate_ccw();
+                state_ = STATE_READING_CODE;
+                //venkat(VENKAT_NO_ERR);
             }
             else
             {
-                venkat(VENKAT_INVALID_DELTA);
+                if (delta_direction == 1 || delta_direction == -3)
+                {
+                    rotate_cw();
+                }
+                else if( delta_direction == -1 || delta_direction == 3)
+                {
+                    rotate_ccw();
+                }
+                else
+                {
+                    venkat(VENKAT_INVALID_DELTA);
+                }
+            }
+        }
+        else if(state_ == STATE_READING_CODE)
+        {
+            set_base_speed(50);
+            uint16_t values[5];
+	
+            uint16_t line = read_line(values, IR_EMITTERS_ON);
+            follow_line_narrow(values);
+            /*if (deadend == 1 && values[0] > 950 && values[4] > 950)
+            {
+                //the robot finds the deadend bar directly after the first marker
+                deadend = 0;
+                current_state = DEADEND_BARCODE;
+                break;
+            }
+            else */
+            if (values[1] > 700 && values[2] > 700 && values[3] > 700 && state == 0) // entering big square
+            {
+                clear();
+                print("QQQQQ");
+                crossing_marker = 1;
+                state = 1;
+            }
+            // exiting big sqaure
+            else if (values[0] < 300 && values[1] > 300 && values[2] > 700 && values[3] > 300 && values[4] < 300 && crossing_marker == 1)
+            {
+                clear();
+                print("marker");
+                state = 1;
+                crossing_marker = 0;
+                state_left = 1;
+                state_right = 1;
+                deadend = 1;
+            }else // exited big square
+            if (values[0] < 100 && values[1] < 300 && values[3] < 300 && values[4] < 100 && state == 1)
+            {
+                clear();
+                print("AAAA");
+                deadend = 0;
+                state = 0;
+                state_right = 0;
+                state_left = 0;
+            }
+            else if (values[4] > 600 && state_right == 0)
+            {
+                //Todo: Add comment
+                currentNoOfDots++;
+                clear();
+                print_message_and_two_numbers("right", targetNodeIndex, currentNoOfDots);
+                state_right = 1;
+            }
+            else if (values[0] > 600 && state_left == 0)
+            {
+                uint8_t incrementValue = 1 << currentNoOfDots;
+                currentNoOfDots++;
+                targetNodeIndex ^= incrementValue;
+                clear();
+                print_message_and_two_numbers("left", targetNodeIndex, currentNoOfDots);
+                state_left = 1;
+            }
+            else if (values[1] > 700 && values[2] > 700 && values[3] > 700 && state_left == 0 && state_right == 0)
+            {
+                //the robot finds marker 2
+                state_left = 1;
+                state_right = 1;
+                print_message_and_number("magnus", 1);
+                turn180();
+                print_message_and_number("magnus", 2);
+                uint8_t coming_back = 1;
+                uint8_t almost_out = 0;
+                while (coming_back)
+                {
+                    set_base_speed(50);
+                    line = read_line(values, IR_EMITTERS_ON);
+                    follow_line_narrow(values);
+                    if ((values[0] < 100 && values[1] > 700 && values[2] > 700 && values[3] > 700 && values[4] < 100) && (almost_out == 0))
+                    { 
+                        almost_out = 1;
+                        print_message_and_number("out", 1);
+                    }
+                    if ((values[0] < 100 && values[1] < 300 && values[2] > 700 && values[3] < 300 && values[4] < 100) && (almost_out == 1))
+                    {
+                        break;
+                    }
+
+                }
+                delay_ms(500);
+                run_1cm();
+                print_message_and_number("shweta", 1);
+                StopRobotForever();
             }
         }
     } 
@@ -204,7 +333,7 @@ uint8_t check_end(uint8_t row, uint8_t col)
 uint8_t get_first_goal()
 {
     // return COL_COUNT + 1;
-    return 12;
+    return 5;
 }
 
 void set_goal_data(uint8_t center)
