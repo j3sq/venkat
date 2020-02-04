@@ -23,7 +23,7 @@
 #include "tsm.h"
 
 const int8_t ROW_COUNT = 3;
-const int8_t COL_COUNT = 1;
+const int8_t COL_COUNT = 4;
 int8_t current_row_ = 0;
 int8_t current_col_ = -1;
 Direction current_direction_ = DIRECTION_WEST;
@@ -64,12 +64,20 @@ void run_1cm(void)
 }
 
 void turn180()
-{
-	print_message_and_number("turn180", 0);
-	
-	set_m1_speed(-50);
+{	
+    set_m1_speed(-50);
 	set_m2_speed(50);
-	delay_ms(725);
+	delay_ms(600);
+    while (TRUE)
+    {
+        uint16_t sensors[5];
+        int ll = read_line(sensors, IR_EMITTERS_ON);
+        if (sensors[LEFT_INNER_SENSOR] > 300)
+        {
+            follow_line(ll);
+            break;
+        }
+    }
 }
 
 void solve_challenge(void)
@@ -179,7 +187,10 @@ void solve_challenge(void)
         else if (state_ == STATE_READING_CODE)
         {
             follow_line_read_code();
-
+        }
+        else if (state_ == STATE_RETURN_TO_ARENA)
+        {
+            follow_line_ignore_code();
         }
     } 
 }
@@ -281,7 +292,13 @@ void follow_line_read_code(void)
     {
         bit_count = 0;
         gate_state_++;
-        venkat(next_center_);
+        turn180();
+        current_direction_ +=2;
+        if (current_direction_ > DIRECTION_WEST ) 
+        {
+            current_direction_ -= 4;
+        }
+        state_ = STATE_RETURN_TO_ARENA;
     }
     follow_line_narrow(sensors);
 }
@@ -331,6 +348,44 @@ void follow_line_through_gate(void)
     follow_line(ll);
 }
 
+void follow_line_ignore_code(void)
+{
+    uint16_t sensors[5];
+	static uint8_t crossing_entered = FALSE;
+	static uint8_t crossing_passed = FALSE;
+
+
+    int ll = read_line(sensors, IR_EMITTERS_ON);
+    follow_line_narrow(sensors);
+
+    if (crossing_entered && crossing_passed)
+    {
+        // We have already crossed, clear both
+        crossing_entered = FALSE;
+        crossing_passed = FALSE;
+        state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+        current_goal_ = next_center_;
+        set_goal_data(current_goal_);
+        follow_line(ll);
+        return;
+    }
+
+    if (sensors[LEFT_INNER_SENSOR]  > 300 &&
+    sensors[RIGHT_INNER_SENSOR] > 300)
+    {
+        crossing_entered = TRUE;
+    }
+
+    if (crossing_entered &&
+        (sensors[LEFT_INNER_SENSOR] < 100 ||
+        sensors[RIGHT_INNER_SENSOR] < 100))  // || because the binary code might trip it
+    {
+        crossing_passed = TRUE;
+    }
+
+    follow_line(ll);
+}
+
 uint8_t check_end(uint8_t row, uint8_t col)
 {
     return col == COL_COUNT;
@@ -339,7 +394,6 @@ uint8_t check_end(uint8_t row, uint8_t col)
 uint8_t get_first_goal()
 {
     return COL_COUNT + 1;
-
 }
 
 void set_goal_data(uint8_t center)

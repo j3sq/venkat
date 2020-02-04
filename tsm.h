@@ -9,7 +9,7 @@ typedef enum
 	DIRECTION_NORTH,
 	DIRECTION_EAST,
 	DIRECTION_SOUTH,
-    DIRECTION_WEST
+    DIRECTION_WEST,
 } Direction;
 
 typedef enum
@@ -19,6 +19,7 @@ typedef enum
     STATE_APPROACHING_CENTER,
     STATE_ENTER_FIRST_GATE,
     STATE_READING_CODE,
+    STATE_RETURN_TO_ARENA,
 
 } State;
 
@@ -64,6 +65,8 @@ void print_goal();
 void move_forward(); // Helper function to move the robot a couple of cm's forward
 void follow_line_through_gate(void);
 void follow_line_read_code(void);
+void turn180(void);
+void follow_line_ignore_code(void);
 
 
 
