@@ -17,9 +17,21 @@ typedef enum
     STATE_FOLLOW_LINE_UNTIL_CROSSING,
     STATE_AT_CROSS,
     STATE_APPROACHING_CENTER,
+    STATE_ENTER_FIRST_GATE,
     STATE_READING_CODE,
 
 } State;
+
+typedef enum
+{
+    GATE_STATE_NA,
+    GATE_STATE_ENTERED_FIRST_GATE,
+    GATE_STATE_PASSED_FIRST_GATE,
+    GATE_STATE_ENTERED_SECOND_GATE,
+    GATE_STATE_PASSED_SECOND_GATE,
+    GATE_STATE_ENTERED_THIRD_GATE,
+    GATE_STATE_PASSED_THIRD_GATE,
+} Gate_state;
 
 typedef enum
 {
@@ -50,6 +62,8 @@ void sanity_check(void);
 void rotate_to_goal(void);
 void print_goal();
 void move_forward(); // Helper function to move the robot a couple of cm's forward
+void follow_line_through_gate(void);
+void follow_line_read_code(void);
 
 
 

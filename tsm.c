@@ -23,11 +23,13 @@
 #include "tsm.h"
 
 const int8_t ROW_COUNT = 3;
-const int8_t COL_COUNT = 4;
+const int8_t COL_COUNT = 1;
 int8_t current_row_ = 0;
 int8_t current_col_ = -1;
 Direction current_direction_ = DIRECTION_WEST;
 State state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+Gate_state gate_state_ = GATE_STATE_NA;
+uint8_t next_center_ = 0;
 
 // Goal parameters
 Direction goal_direction_;
@@ -150,8 +152,8 @@ void solve_challenge(void)
             if (delta_direction == 0)
             {
                 move_forward();
-                state_ = STATE_READING_CODE;
-                //venkat(VENKAT_NO_ERR);
+                state_ = STATE_ENTER_FIRST_GATE;
+                //move_fovenkat(VENKAT_NO_ERR);
             }
             else
             {
@@ -169,96 +171,15 @@ void solve_challenge(void)
                 }
             }
         }
-        else if(state_ == STATE_READING_CODE)
-        {
-            set_base_speed(50);
-            uint16_t values[5];
-	
-            uint16_t line = read_line(values, IR_EMITTERS_ON);
-            follow_line_narrow(values);
-            /*if (deadend == 1 && values[0] > 950 && values[4] > 950)
-            {
-                //the robot finds the deadend bar directly after the first marker
-                deadend = 0;
-                current_state = DEADEND_BARCODE;
-                break;
-            }
-            else */
-            if (values[1] > 700 && values[2] > 700 && values[3] > 700 && state == 0) // entering big square
-            {
-                clear();
-                print("QQQQQ");
-                crossing_marker = 1;
-                state = 1;
-            }
-            // exiting big sqaure
-            else if (values[0] < 300 && values[1] > 300 && values[2] > 700 && values[3] > 300 && values[4] < 300 && crossing_marker == 1)
-            {
-                clear();
-                print("marker");
-                state = 1;
-                crossing_marker = 0;
-                state_left = 1;
-                state_right = 1;
-                deadend = 1;
-            }else // exited big square
-            if (values[0] < 100 && values[1] < 300 && values[3] < 300 && values[4] < 100 && state == 1)
-            {
-                clear();
-                print("AAAA");
-                deadend = 0;
-                state = 0;
-                state_right = 0;
-                state_left = 0;
-            }
-            else if (values[4] > 600 && state_right == 0)
-            {
-                //Todo: Add comment
-                currentNoOfDots++;
-                clear();
-                print_message_and_two_numbers("right", targetNodeIndex, currentNoOfDots);
-                state_right = 1;
-            }
-            else if (values[0] > 600 && state_left == 0)
-            {
-                uint8_t incrementValue = 1 << currentNoOfDots;
-                currentNoOfDots++;
-                targetNodeIndex ^= incrementValue;
-                clear();
-                print_message_and_two_numbers("left", targetNodeIndex, currentNoOfDots);
-                state_left = 1;
-            }
-            else if (values[1] > 700 && values[2] > 700 && values[3] > 700 && state_left == 0 && state_right == 0)
-            {
-                //the robot finds marker 2
-                state_left = 1;
-                state_right = 1;
-                print_message_and_number("magnus", 1);
-                turn180();
-                print_message_and_number("magnus", 2);
-                uint8_t coming_back = 1;
-                uint8_t almost_out = 0;
-                while (coming_back)
-                {
-                    set_base_speed(50);
-                    line = read_line(values, IR_EMITTERS_ON);
-                    follow_line_narrow(values);
-                    if ((values[0] < 100 && values[1] > 700 && values[2] > 700 && values[3] > 700 && values[4] < 100) && (almost_out == 0))
-                    { 
-                        almost_out = 1;
-                        print_message_and_number("out", 1);
-                    }
-                    if ((values[0] < 100 && values[1] < 300 && values[2] > 700 && values[3] < 300 && values[4] < 100) && (almost_out == 1))
-                    {
-                        break;
-                    }
+        else if(state_ == STATE_ENTER_FIRST_GATE)
+        {	
+            follow_line_through_gate();
 
-                }
-                delay_ms(500);
-                run_1cm();
-                print_message_and_number("shweta", 1);
-                StopRobotForever();
-            }
+        }
+        else if (state_ == STATE_READING_CODE)
+        {
+            follow_line_read_code();
+
         }
     } 
 }
@@ -325,6 +246,91 @@ void follow_line_until_crossing(void)
     follow_line(ll);
 }
 
+void follow_line_read_code(void)
+{
+    static int8_t right_bit = FALSE;
+    static int8_t left_bit = FALSE;
+    static int8_t bit_count = 0;
+
+    uint16_t sensors[5];
+
+    (void) read_line(sensors, IR_EMITTERS_ON);
+    if (sensors[RIGHT_OUTHER_SENSOR] > 300 && !right_bit)
+    {
+        //Todo: Add comment
+        bit_count++;
+        // clear();
+        // print_message_and_two_numbers("right", targetNodeIndex, currentNoOfDots);
+        right_bit = TRUE;
+    }
+    else if (sensors[LEFT_OUTHER_SENSOR] > 300 && !left_bit)
+    {
+        uint8_t increment_value = 1 << bit_count;
+        bit_count++;
+        next_center_ ^= increment_value;
+        // clear();
+        // print_message_and_two_numbers("left", targetNodeIndex, currentNoOfDots);
+        left_bit = TRUE;
+    }
+    else if (sensors[LEFT_OUTHER_SENSOR] < 300 && sensors[RIGHT_OUTHER_SENSOR] < 300 && (right_bit || left_bit))
+    {
+        right_bit = FALSE;
+        left_bit = FALSE;
+    }
+    else if(sensors[LEFT_INNER_SENSOR] > 300 && sensors[RIGHT_INNER_SENSOR] > 300)
+    {
+        bit_count = 0;
+        gate_state_++;
+        venkat(next_center_);
+    }
+    follow_line_narrow(sensors);
+}
+
+void follow_line_through_gate(void)
+{
+    uint16_t sensors[5];
+	static uint8_t crossing_entered = FALSE;
+	static uint8_t crossing_passed = FALSE;
+
+
+    int ll = read_line(sensors, IR_EMITTERS_ON);
+
+
+    if (crossing_entered && crossing_passed)
+    {
+        // We have already crossed, clear both
+        crossing_entered = FALSE;
+        crossing_passed = FALSE;
+        follow_line(ll);
+        return;
+    }
+
+    if (sensors[LEFT_INNER_SENSOR]  > 300 &&
+    sensors[RIGHT_INNER_SENSOR] > 300)
+    {
+        if (!crossing_entered)
+        {
+            gate_state_++;
+        }
+        crossing_entered = TRUE;
+
+    }
+
+    if (crossing_entered &&
+        (sensors[LEFT_INNER_SENSOR] < 100 ||
+        sensors[RIGHT_INNER_SENSOR] < 100))  // || because the binary code might trip it
+    {
+        crossing_passed = TRUE;
+        gate_state_++;
+        if (gate_state_ == GATE_STATE_PASSED_FIRST_GATE)
+        {
+            state_= STATE_READING_CODE;
+        }
+    }
+
+    follow_line(ll);
+}
+
 uint8_t check_end(uint8_t row, uint8_t col)
 {
     return col == COL_COUNT;
@@ -332,8 +338,8 @@ uint8_t check_end(uint8_t row, uint8_t col)
 
 uint8_t get_first_goal()
 {
-    // return COL_COUNT + 1;
-    return 5;
+    return COL_COUNT + 1;
+
 }
 
 void set_goal_data(uint8_t center)
