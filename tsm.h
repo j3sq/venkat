@@ -41,7 +41,8 @@ typedef enum
     VENKAT_INVALID_CENTER,                  // 2
     VENKAT_INVALID_GOAL_DIRECTION,          // 3
     VENKAT_INVALID_DELTA,                   // 4
-    VENKAT_OUTSIDE_ARENA                    // 5
+    VENKAT_OUTSIDE_ARENA,                   // 5
+    VENKAT_HAS_DONE_IT,                     // 6
 
 } Venkat_type;
 
@@ -61,12 +62,13 @@ void approach_goal_col_row(void);
 void approach_goal_col_row2(void);
 void sanity_check(void);
 void rotate_to_goal(void);
-void print_goal();
+void print_goal(void);
 void move_forward(); // Helper function to move the robot a couple of cm's forward
 void follow_line_through_gate(void);
 void follow_line_read_code(void);
 void turn180(void);
 void follow_line_ignore_code(void);
+void venkat_like_no_tomorrow(void);
 
 
 

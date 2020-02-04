@@ -30,6 +30,8 @@ Direction current_direction_ = DIRECTION_WEST;
 State state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
 Gate_state gate_state_ = GATE_STATE_NA;
 uint8_t next_center_ = 0;
+uint8_t out_on_delivery_ = FALSE; // This will be used to stop updating position
+                                // when we come back from a delivery center
 
 // Goal parameters
 Direction goal_direction_;
@@ -74,9 +76,9 @@ void turn180()
         int ll = read_line(sensors, IR_EMITTERS_ON);
         if (sensors[LEFT_INNER_SENSOR] > 300)
         {
-            follow_line(ll);
             break;
         }
+        follow_line(ll);
     }
 }
 
@@ -181,7 +183,16 @@ void solve_challenge(void)
         }
         else if(state_ == STATE_ENTER_FIRST_GATE)
         {	
-            follow_line_through_gate();
+            out_on_delivery_ = TRUE;
+            if (current_goal_ == 2 * (COL_COUNT + ROW_COUNT))
+            {
+                venkat_like_no_tomorrow();
+            }
+            else
+            {
+                follow_line_through_gate();
+            }
+            
 
         }
         else if (state_ == STATE_READING_CODE)
@@ -250,7 +261,15 @@ void follow_line_until_crossing(void)
         sensors[RIGHT_OUTHER_SENSOR] < 100)
     {
         crossing_passed = TRUE;
-        update_pos_after_crossing();
+        if (out_on_delivery_)
+        {
+            out_on_delivery_ = FALSE;
+        }
+        else
+        {
+            update_pos_after_crossing();
+        }
+
         state_ = STATE_AT_CROSS;
     }
 
@@ -299,6 +318,7 @@ void follow_line_read_code(void)
             current_direction_ -= 4;
         }
         state_ = STATE_RETURN_TO_ARENA;
+        gate_state_ = GATE_STATE_NA; // until we do the bonus
     }
     follow_line_narrow(sensors);
 }
@@ -365,6 +385,8 @@ void follow_line_ignore_code(void)
         crossing_passed = FALSE;
         state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
         current_goal_ = next_center_;
+        next_center_ = 0;
+        print_goal();
         set_goal_data(current_goal_);
         follow_line(ll);
         return;
@@ -640,11 +662,13 @@ void rotate_to_goal(void)
 
 void print_goal(void)
 {
-    lcd_goto_xy(0,0);
     clear();
+    lcd_goto_xy(0,0);
     print_long(goal_row_);
     print(":");
     print_long(goal_col_);
+    lcd_goto_xy(0,1);
+    print_long(current_goal_);
 
 }
 
@@ -657,5 +681,19 @@ void move_forward()
         follow_line(ll);
         ll = read_line(sensors, IR_EMITTERS_ON);
     }
+
+}
+
+void venkat_like_no_tomorrow(void)
+{
+    move_forward();
+    play_sound(0);
+    lcd_goto_xy(0,0);
+    print("Vnkt");
+    print_long(goal_col_);
+    lcd_goto_xy(0,1);
+    print("was here!");
+    play_sound(1);
+    venkat(VENKAT_HAS_DONE_IT);
 
 }
