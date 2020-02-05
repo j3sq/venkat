@@ -402,8 +402,8 @@ void follow_line_ignore_code(void)
     }
 
     if (crossing_entered &&
-        (sensors[LEFT_INNER_SENSOR] < 100 ||
-        sensors[RIGHT_INNER_SENSOR] < 100))  // || because the binary code might trip it
+        (sensors[LEFT_INNER_SENSOR] < 300 ||
+        sensors[RIGHT_INNER_SENSOR] < 300))  // || because the binary code might trip it
     {
         crossing_passed = TRUE;
     }
@@ -688,7 +688,13 @@ void move_forward()
 
 void venkat_like_no_tomorrow(void)
 {
-    move_forward();
+    uint16_t sensors[5];
+    while(TRUE)
+    {
+        int ll = read_line(sensors, IR_EMITTERS_ON);
+        if (sensors[MID_SENSOR]< 300 && sensors[RIGHT_INNER_SENSOR] < 300) break;
+        follow_line(ll);
+    }
     play_sound(0);
     lcd_goto_xy(0,0);
     print("Vnkt");
