@@ -28,6 +28,10 @@ void play_sound(int8_t sound)
 	{
 		play_from_program_space(weired_sound);
 	}
+	else if (sound == 2)
+	{
+		play("!T240 L8 a gafaeada c+adaeafa >aa>bac#ada c#adaeaf4");
+	}
 }
 
 void play_beep(void)

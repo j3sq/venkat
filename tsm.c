@@ -20,6 +20,7 @@
 #include "markers.h"
 #include "follow_line.h"
 #include "utils.h"
+#include "nodesLog.h"
 #include "tsm.h"
 
 const int8_t ROW_COUNT = 3;
@@ -87,6 +88,7 @@ void solve_challenge(void)
     current_goal_ = get_first_goal();
     set_goal_data(current_goal_);
     uint8_t done = FALSE;
+    initNodeLog();
     while(!done)
     {
 
@@ -246,7 +248,7 @@ void follow_line_until_crossing(void)
         // We have already crossed, clear both
         crossing_entered = FALSE;
         crossing_passed = FALSE;
-        follow_line(ll);
+        follow_line_narrow(sensors);
         return;
     }
 
@@ -273,7 +275,7 @@ void follow_line_until_crossing(void)
         state_ = STATE_AT_CROSS;
     }
 
-    follow_line(ll);
+    follow_line_narrow(sensors);
 }
 
 void follow_line_read_code(void)
@@ -311,6 +313,7 @@ void follow_line_read_code(void)
     {
         bit_count = 0;
         gate_state_++;
+        addValueToNodeLog(next_center_, NORMAL);
         turn180();
         current_direction_ +=2;
         if (current_direction_ > DIRECTION_WEST ) 
@@ -405,7 +408,6 @@ void follow_line_ignore_code(void)
         crossing_passed = TRUE;
     }
 
-    follow_line(ll);
 }
 
 uint8_t check_end(uint8_t row, uint8_t col)
@@ -693,7 +695,9 @@ void venkat_like_no_tomorrow(void)
     print_long(goal_col_);
     lcd_goto_xy(0,1);
     print("was here!");
-    play_sound(1);
+    play_sound(2);
+    stop();
+    printVisitedNodes();
     venkat(VENKAT_HAS_DONE_IT);
 
 }
