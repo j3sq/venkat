@@ -23,6 +23,8 @@
 #include "nodesLog.h"
 #include "tsm.h"
 
+#define  BONUS_COUNT  14// Number of bonus spots x2 
+
 const int8_t ROW_COUNT = 3;
 const int8_t COL_COUNT = 4;
 int8_t current_row_ = 0;
@@ -31,8 +33,14 @@ Direction current_direction_ = DIRECTION_WEST;
 State state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
 Gate_state gate_state_ = GATE_STATE_NA;
 uint8_t next_center_ = 0;
+uint8_t next_bonus_ = 0;
 uint8_t out_on_delivery_ = FALSE; // This will be used to stop updating position
                                 // when we come back from a delivery center
+
+Crossing bonus_from[BONUS_COUNT];
+Crossing bonus_to[BONUS_COUNT];
+
+uint8_t going_for_bonus_ = FALSE;
 
 // Goal parameters
 Direction goal_direction_;
@@ -164,6 +172,10 @@ void solve_challenge(void)
             if (delta_direction == 0)
             {
                 move_forward();
+                if (going_for_bonus_)
+                {
+                    venkat(111);
+                }
                 state_ = STATE_ENTER_FIRST_GATE;
                 //move_fovenkat(VENKAT_NO_ERR);
             }
@@ -194,16 +206,26 @@ void solve_challenge(void)
             {
                 follow_line_through_gate();
             }
-            
-
         }
         else if (state_ == STATE_READING_CODE)
         {
             follow_line_read_code();
         }
+        else if (state_ == STATE_LOOKING_FOR_BONUS_CODE)
+        {
+            follow_line_check_bonus_or_not();
+        }
         else if (state_ == STATE_RETURN_TO_ARENA)
         {
             follow_line_ignore_code();
+        }
+        else if (state_ == STATE_READING_BONUS)
+        {
+            follow_line_read_bonus();
+        }
+        else if (state_ == STATE_RETURN_TO_ARENA_FROM_BONUS)
+        {
+            follow_line_ignore_code_and_bonus();
         }
     } 
 }
@@ -241,7 +263,7 @@ void follow_line_until_crossing(void)
     uint16_t sensors[5];
 	static uint8_t crossing_entered = FALSE;
 	static uint8_t crossing_passed = FALSE;
-    int ll = read_line(sensors, IR_EMITTERS_ON);
+    (void) read_line(sensors, IR_EMITTERS_ON);
 
     if (crossing_entered && crossing_passed)
     {
@@ -253,7 +275,8 @@ void follow_line_until_crossing(void)
     }
 
     if (sensors[LEFT_OUTHER_SENSOR]  > 300 &&
-    sensors[RIGHT_OUTHER_SENSOR] > 300)
+    sensors[RIGHT_OUTHER_SENSOR] > 300 && sensors[LEFT_INNER_SENSOR]  > 300 &&
+    sensors[RIGHT_INNER_SENSOR] > 300 && sensors[MID_SENSOR] > 300)
     {
         crossing_entered = TRUE;
     }
@@ -314,14 +337,16 @@ void follow_line_read_code(void)
         bit_count = 0;
         gate_state_++;
         addValueToNodeLog(next_center_, NORMAL);
-        turn180();
-        current_direction_ +=2;
-        if (current_direction_ > DIRECTION_WEST ) 
-        {
-            current_direction_ -= 4;
-        }
-        state_ = STATE_RETURN_TO_ARENA;
-        gate_state_ = GATE_STATE_NA; // until we do the bonus
+        gate_state_ = GATE_STATE_ENTERED_SECOND_GATE;
+        state_ = STATE_LOOKING_FOR_BONUS_CODE;
+        // turn180();
+        // current_direction_ +=2;
+        // if (current_direction_ > DIRECTION_WEST ) 
+        // {
+        //     current_direction_ -= 4;
+        // }
+        // state_ = STATE_RETURN_TO_ARENA;
+        // gate_state_ = GATE_STATE_NA; // until we do the bonus
     }
     follow_line_narrow(sensors);
 }
@@ -387,7 +412,8 @@ void follow_line_ignore_code(void)
         crossing_entered = FALSE;
         crossing_passed = FALSE;
         state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
-        current_goal_ = next_center_;
+        current_goal_ = next_bonus_; // only for printing. Don't call set_goal_data
+
         next_center_ = 0;
         print_goal();
         set_goal_data(current_goal_);
@@ -629,7 +655,7 @@ void approach_goal_col_row(void)
     }
     else
     {
-        venkat(VENKAT_INVALID_GOAL_DIRECTION + 11);
+        venkat(VENKAT_INVALID_GOAL_DIRECTION);
     }
     return;
 }
@@ -658,7 +684,7 @@ void rotate_to_goal(void)
     }
     else
     {
-        venkat(VENKAT_INVALID_DELTA+ 10 + current_direction_);
+        venkat(VENKAT_INVALID_DELTA);
     }
 }
 
@@ -671,6 +697,19 @@ void print_goal(void)
     print_long(goal_col_);
     lcd_goto_xy(0,1);
     print_long(current_goal_);
+
+}
+
+void print_bonus(void)
+{
+    clear();
+    lcd_goto_xy(0,0);
+    print("Bonus");
+    print_long(goal_col_);
+    print(":");
+    print_long(goal_row_);
+    lcd_goto_xy(0,1);
+    print_long(next_bonus_);
 
 }
 
@@ -700,4 +739,172 @@ void venkat_like_no_tomorrow(void)
     printVisitedNodes();
     venkat(VENKAT_HAS_DONE_IT);
 
+}
+
+void set_bonus_locations()
+{
+    // First bonus
+    bonus_from[12].col = 0;
+    bonus_to[12].row = 1;
+
+    bonus_from[13].col = 0;
+    bonus_to[13].row = 2;
+
+    // Second bonus
+    bonus_from[2].col = 2;
+    bonus_to[2].row = 1;
+
+    bonus_from[3].col = 3;
+    bonus_to[3].row = 1;
+
+}
+
+
+void follow_line_check_bonus_or_not()
+{
+    uint16_t sensors[5];
+    (void) read_line(sensors, IR_EMITTERS_ON);
+
+
+    if (sensors[LEFT_INNER_SENSOR]  < 300 &&
+    sensors[RIGHT_INNER_SENSOR] < 300 &&
+    sensors[MID_SENSOR] < 300)
+    {
+        gate_state_ = GATE_STATE_NO_BONUS;
+        turn180();
+        current_direction_ +=2;
+        if (current_direction_ > DIRECTION_WEST ) 
+        {
+            current_direction_ -= 4;
+        }
+        state_ = STATE_RETURN_TO_ARENA;
+        gate_state_ = GATE_STATE_NA; // until we do the bonus
+    }
+    else if (sensors[LEFT_INNER_SENSOR]  < 300 &&
+            sensors[RIGHT_INNER_SENSOR] < 300 &&
+            sensors[MID_SENSOR] > 300)
+    {
+        gate_state_ = GATE_STATE_PASSED_SECOND_GATE;
+        state_ = STATE_READING_BONUS;
+    }
+
+    follow_line_narrow(sensors);
+
+}
+
+void follow_line_read_bonus(void)
+{
+    static int8_t right_bit = FALSE;
+    static int8_t left_bit = FALSE;
+    static int8_t bit_count = 0;
+
+    uint16_t sensors[5];
+
+    (void) read_line(sensors, IR_EMITTERS_ON);
+    if (sensors[RIGHT_OUTHER_SENSOR] > 300 && !right_bit)
+    {
+        bit_count++;
+        right_bit = TRUE;
+    }
+    else if (sensors[LEFT_OUTHER_SENSOR] > 300 && !left_bit)
+    {
+        uint8_t increment_value = 1 << bit_count;
+        bit_count++;
+        next_bonus_ ^= increment_value;
+        left_bit = TRUE;
+    }
+    else if (sensors[LEFT_OUTHER_SENSOR] < 300 && sensors[RIGHT_OUTHER_SENSOR] < 300 && (right_bit || left_bit))
+    {
+        right_bit = FALSE;
+        left_bit = FALSE;
+    }
+    else if(sensors[LEFT_INNER_SENSOR] > 300 && sensors[RIGHT_INNER_SENSOR] > 300)
+    {
+        bit_count = 0;
+        gate_state_++;
+        addValueToNodeLog(next_bonus_, BONUS);
+        print_bonus();
+        gate_state_ = GATE_STATE_ENTERED_THIRD_GATE;
+        turn180();
+        current_direction_ +=2;
+        if (current_direction_ > DIRECTION_WEST ) 
+        {
+            current_direction_ -= 4;
+        }
+        state_ = STATE_RETURN_TO_ARENA_FROM_BONUS;
+    }
+    follow_line_narrow(sensors);
+}
+
+void follow_line_ignore_code_and_bonus()
+{
+    uint16_t sensors[5];
+	static uint8_t crossing_entered = FALSE;
+	static uint8_t crossing_passed = FALSE;
+
+
+    int ll = read_line(sensors, IR_EMITTERS_ON);
+    follow_line_narrow(sensors);
+
+    if (crossing_entered && crossing_passed)
+    {
+        // We have already crossed, clear both
+        crossing_entered = FALSE;
+        crossing_passed = FALSE;
+        gate_state_--;
+        if (gate_state_ == GATE_STATE_ENTERED_FIRST_GATE)
+        {
+        state_ = STATE_FOLLOW_LINE_UNTIL_CROSSING;
+        goal_row_ = bonus_from[next_bonus_ * 2].row;
+        goal_col_ = bonus_from[next_bonus_ * 2].col;
+        set_bonus_direction(next_bonus_ * 2);
+        going_for_bonus_ = TRUE;
+        print_goal();
+        set_goal_data(current_goal_);
+        follow_line(ll);
+        return;
+        }
+        
+    }
+
+    if (sensors[LEFT_INNER_SENSOR]  > 300 &&
+    sensors[RIGHT_INNER_SENSOR] > 300)
+    {
+        crossing_entered = TRUE;
+    }
+
+    if (crossing_entered &&
+        (sensors[LEFT_INNER_SENSOR] < 100 ||
+        sensors[RIGHT_INNER_SENSOR] < 100))  // || because the binary code might trip it
+    {
+        crossing_passed = TRUE;
+    }
+   
+}
+
+
+void set_bonus_direction(uint8_t bonus_idx)
+{
+    if (bonus_from[bonus_idx].col > bonus_to[bonus_idx].col)
+    {
+        goal_direction_ = DIRECTION_EAST;
+    }
+    else if (bonus_from[bonus_idx].col < bonus_to[bonus_idx].col)
+    {
+        goal_direction_ = DIRECTION_WEST;
+    }
+    else if (bonus_from[bonus_idx].row > bonus_to[bonus_idx].row)
+    {
+        goal_direction_ = DIRECTION_SOUTH;
+    }
+    else if (bonus_from[bonus_idx].row < bonus_to[bonus_idx].row)
+    {
+        goal_direction_ = DIRECTION_NORTH;
+    }
+    else
+    {
+        print_goal();
+        stop();
+        venkat(VENKAT_INVALID_BONUS_DIRECTION);
+    }
 }
