@@ -98,6 +98,7 @@ void solve_challenge(void)
         }
         else if (state_ == STATE_AT_CROSS)
         {
+            set_base_speed(70);
             int8_t delta_col_ = goal_col_ - current_col_;
             int8_t delta_row_ = goal_row_ - current_row_;
             // Can we minimize something by moving forward?
@@ -160,6 +161,7 @@ void solve_challenge(void)
         }
         else if (state_ == STATE_APPROACHING_CENTER)
         {
+            set_base_speed(50);
             int8_t delta_direction = (int8_t) goal_direction_ - (int8_t) current_direction_;
             if (delta_direction == 0)
             {
@@ -252,15 +254,17 @@ void follow_line_until_crossing(void)
         return;
     }
 
-    if (sensors[LEFT_OUTHER_SENSOR]  > 300 &&
-    sensors[RIGHT_OUTHER_SENSOR] > 300)
+    if (sensors[LEFT_OUTHER_SENSOR]  > 500 &&
+    sensors[RIGHT_OUTHER_SENSOR] > 500  &&
+    sensors[LEFT_INNER_SENSOR]  > 500 &&
+    sensors[RIGHT_INNER_SENSOR] > 500)
     {
         crossing_entered = TRUE;
     }
 
     if (crossing_entered &&
-        sensors[LEFT_OUTHER_SENSOR] < 100 &&
-        sensors[RIGHT_OUTHER_SENSOR] < 100)
+        sensors[LEFT_OUTHER_SENSOR] < 300 &&
+        sensors[RIGHT_OUTHER_SENSOR] < 300)
     {
         crossing_passed = TRUE;
         if (out_on_delivery_)
